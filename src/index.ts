@@ -7,6 +7,7 @@ import connectPgSimple from "connect-pg-simple";
 
 import homeRoutes from "./routes/home.js";
 import authRoutes from "./routes/auth.js";
+import testRoute from "./routes/testRoute.js";
 import loggingMiddleware from "./middleware/logging.js";
 import { requireAuth } from "./middleware/auth.js";
 
@@ -52,6 +53,7 @@ app.use(loggingMiddleware);
 
 //home route
 app.use("/", homeRoutes);
+app.use("/test", testRoute);
 
 //auth routes
 app.use("/auth", authRoutes);
@@ -65,5 +67,7 @@ app.get("/protected", requireAuth, (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running at http://localhost:${String(PORT)} at ${new Date().toLocaleTimeString()}`);
+  console.log(
+    `Server is running at http://localhost:${String(PORT)} at ${new Date().toLocaleTimeString()}`,
+  );
 });
