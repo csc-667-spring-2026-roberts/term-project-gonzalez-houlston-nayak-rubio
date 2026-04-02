@@ -1,15 +1,9 @@
 import { Router } from "express";
 
 const router = Router();
-
+//home route
 router.get("/", (_request, response) => {
-  response.send("Rummy from within a route");
+  response.redirect("/auth/login");
 });
-/* 
-router.get("/:id", (request, response) => {
-    const { id } = request.params;
 
-    response.send(`Hello from page id ${id}`);
-})
-*/
 export default router;

@@ -1,8 +1,9 @@
 import { NextFunction, Request, Response } from "express";
 
-const logging = (request: Request, _response: Response, next: NextFunction) => {
-    console.log(`${new Date().toUTCString()} ${request.method} ${request.path}`);
-    next();
-}
+//middleware function to log incoming requests
+const logging = (request: Request, _response: Response, next: NextFunction): void => {
+  console.log(`${new Date().toUTCString()} ${request.method} ${request.path}`);
+  next();
+};
 
 export default logging;

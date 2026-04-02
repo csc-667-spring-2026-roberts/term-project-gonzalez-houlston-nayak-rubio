@@ -1,103 +1,162 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import db from "../db/connection.js";
+import { requireAuth } from "../middleware/auth.js";
+
+//user interface for our data base
+interface User {
+  id: number;
+  email: string;
+  hashed_password?: string;
+}
 
 const router = Router();
 const SALT_ROUNDS = 10;
 
-//Post route /register to create new user
-router.post("/register", async (req, res) => {
-  const { email, password } = req.body;
+//register route
+router.get("/register", (req, res) => {
+  res.render("register", {
+    error: null,
+    email: "",
+  });
+});
 
-  //check if email and password are sent
+//handle registration form submission
+router.post("/register", async (req, res) => {
+  const { email, password } = req.body as { email?: string; password?: string };
+
   try {
     if (!email || !password) {
-      return res.status(400).json({ error: "Email and password required" });
+      res.status(400).render("register", {
+        error: "Email and password required",
+        email: email || "",
+      });
+      return;
     }
-    
-    //chreck if user already exists with same email
-    const existingUser = await db.oneOrNone(
+
+    const existingUser = await db.oneOrNone<{ id: number }>(
       "SELECT id FROM users WHERE email = $1",
-      [email]
+      [email],
     );
 
     if (existingUser) {
-      return res.status(400).json({ error: "User already exists" });
+      res.status(400).render("register", {
+        error: "Email already exists",
+        email,
+      });
+      return;
     }
-    
-    //hash the password before storing in database
+
+    //hash the password before storing it in the database
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
-    //insert new user into database and return the created user
-    const user = await db.one(
-      `INSERT INTO users (email, password)
+    //store the new user in the database
+    const user = await db.one<User>(
+      `INSERT INTO users (email, hashed_password)
        VALUES ($1, $2)
        RETURNING id, email`,
-      [email, hashedPassword]
+      [email, hashedPassword],
     );
 
-    //store user info in session
+    //log the user in by creating a session
     req.session.user = {
       id: user.id,
       email: user.email,
     };
 
-    //respond with success message and user info
-    res.status(201).json({ message: "Registration successful", user });
+    //redirect to lobby after successful registration
+    res.redirect("/auth/lobby");
+    return;
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).render("register", {
+      error: "Server error",
+      email: email || "",
+    });
+    return;
   }
 });
 
-//Post route /login to authenticate user and create session
-router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+//login route
+router.get("/login", (req, res) => {
+  res.render("login", {
+    error: null,
+    email: "",
+  });
+});
 
+//handle login form submission
+router.post("/login", async (req, res) => {
+  const { email, password } = req.body as { email?: string; password?: string };
+
+  //checklogin credentials
   try {
     if (!email || !password) {
-      return res.status(400).json({ error: "Email and password required" });
+      res.status(400).render("login", {
+        error: "Email and password required",
+        email: email || "",
+      });
+      return;
     }
 
-    //find user by email
-    const user = await db.oneOrNone(
-      "SELECT * FROM users WHERE email = $1",
-      [email]
+    //look up user by email
+    const user = await db.oneOrNone<User>(
+      "SELECT id, email, hashed_password FROM users WHERE email = $1",
+      [email],
     );
 
     if (!user) {
-      return res.status(401).json({ error: "Invalid email or password" });
+      res.status(401).render("login", {
+        error: "Invalid email or password",
+        email,
+      });
+      return;
     }
 
-    const match = await bcrypt.compare(password, user.password);
-
+    //compare provided password with hashed password in database
+    const match = await bcrypt.compare(password, user.hashed_password ?? "");
     if (!match) {
-      return res.status(401).json({ error: "Invalid email or password" });
+      res.status(401).render("login", {
+        error: "Invalid email or password",
+        email,
+      });
+      return;
     }
 
-    //store user info in session
+    //log the user in by creating a session
     req.session.user = {
       id: user.id,
       email: user.email,
     };
 
-    res.json({ message: "Login successful", user: req.session.user });
+    res.redirect("/auth/lobby");
+    return;
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).render("login", {
+      error: "Server error",
+      email: email || "",
+    });
+    return;
   }
 });
 
-router.post("/logout", (req, res) => {
+router.post("/logout", (req, res, next) => {
   req.session.destroy((err) => {
     if (err) {
       console.error(err);
-      return res.status(500).json({ error: "Could not log out" });
+      next(err);
+      return;
     }
 
-    //clear the session cookie
     res.clearCookie("connect.sid");
-    res.json({ message: "Logged out successfully" });
+    res.redirect("/auth/login");
+  });
+});
+
+router.get("/lobby", requireAuth, (req, res) => {
+  res.render("lobby", {
+    user: req.session.user,
   });
 });
 
