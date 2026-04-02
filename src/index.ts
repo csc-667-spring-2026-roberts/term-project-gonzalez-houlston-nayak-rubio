@@ -1,10 +1,17 @@
 import express from "express"; //web server framework
 import path from "path"; //works with path files
 import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 
 import homeRoutes from "./routes/home.js";
+import authRoutes from "./routes/auth.js";
 import testRoute from "./routes/testRoute.js";
 import loggingMiddleware from "./middleware/logging.js";
+import { requireAuth } from "./middleware/auth.js";
+
+dotenv.config();
 
 //create express app and set port
 const app = express();
@@ -19,6 +26,26 @@ const __dirname = path.dirname(__filename);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+const PgSession = connectPgSimple(session);
+
+app.use(
+  session({
+    store: new PgSession({
+      conString: process.env.DATABASE_URL,
+      tableName: "user_sessions",
+    }),
+    secret: process.env.SESSION_SECRET as string,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: false,
+      maxAge: 1000 * 60 * 60 * 24,
+    },
+  })
+);
+
 //look in public folder for static files (html, css, js)
 app.use(express.static(path.join(__dirname, "..", "public")));
 
@@ -27,6 +54,17 @@ app.use(loggingMiddleware);
 //home route
 app.use("/", homeRoutes);
 app.use("/test", testRoute);
+
+//auth routes
+app.use("/auth", authRoutes);
+
+//protected route
+app.get("/protected", requireAuth, (req, res) => {
+  res.json({
+    message: "Protected route success",
+    user: req.session.user,
+  });
+});
 
 app.listen(PORT, () => {
   console.log(
