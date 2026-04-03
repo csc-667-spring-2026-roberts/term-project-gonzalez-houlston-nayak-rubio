@@ -1,6 +1,8 @@
 import express from "express"; //web server framework
 import path from "path"; //works with path files
 import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+// import session, { type SessionOptions } from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import session from "express-session";
 
@@ -28,8 +30,32 @@ const __dirname = path.dirname(__filename);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
 const PgSession = connectPgSimple(session);
 
+/* //configure session middleware to use PostgreSQL for session storage
+const sessionOptions: SessionOptions = {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  store: new (PgSession as never)({
+    conString: process.env.DATABASE_URL,
+    tableName: "user_sessions",
+  }),
+  secret: process.env.SESSION_SECRET as string,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: false,
+    maxAge: 1000 * 60 * 60 * 24,
+  },
+};
+
+app.use(session(sessionOptions));
+
+// configure EJS view engine
+app.set("views", path.join(__dirname, "..", "views"));
+app.set("view engine", "ejs"); */ // recheck this
 /***** NEW *******/
 app.use(
   session({

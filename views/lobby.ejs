@@ -1,0 +1,12 @@
+<%- include('partials/header', { title: 'Lobby', user }) %>
+  <section class="box">
+    <h1>Lobby</h1>
+    <p>Welcome, <strong><%= user.email %></strong>!</p>
+    <p>You're authenticated; this page is protected by middleware.</p>
+    <p>Session-based user ID: <%= user.id %></p>
+
+    <form method="POST" action="/auth/logout">
+        <button type="submit">Log out</button>
+    </form>
+  </section>
+
