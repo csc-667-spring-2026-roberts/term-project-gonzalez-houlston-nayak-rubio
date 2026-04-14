@@ -5,6 +5,19 @@
     <p>You're authenticated; this page is protected by middleware.</p>
     <p>Session-based user ID: <%= user.id %></p>
 
+    <button id="fetch-players-btn">Show Players in Lobby</button>
+
+    <ul id="player-list"></ul>
+
+    <!-- Template tag: defines structure, never rendered directly -->
+    <template id="player-template">
+      <li>
+        <span data-field="email"></span>
+      </li>
+    </template>
+
+    <script defer src="/js/lobby.js"></script>
+    
     <form method="POST" action="/auth/logout">
         <button type="submit">Log out</button>
     </form>

@@ -14,6 +14,9 @@ import loggingMiddleware from "./middleware/logging.js";
 import db from "./db/connection.js";
 // import { requireAuth } from "./middleware/auth.js";
 
+import livereload from "livereload";
+import connectLivereload from "connect-livereload";
+
 // dotenv.config();
 
 //create express app and set port
@@ -24,6 +27,17 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PgSession = connectPgSimple(session);
+
+// Live reload — dev only
+if (process.env.NODE_ENV !== "production") {
+  const lrServer = livereload.createServer({
+    delay: 200,
+    port: 35729,
+    exts: ["ejs", "html", "css", "js"],
+  });
+  lrServer.watch([path.join(process.cwd(), "public"), path.join(process.cwd(), "views")]);
+  app.use(connectLivereload({ port: 35729 }));
+}
 
 //functions that run before routes
 //read json and data from requests
