@@ -1,5 +1,4 @@
 import { Router } from "express";
-import crypto from "crypto";
 import bcrypt from "bcrypt";
 import Users from "../db/users.js";
 import { TypedRequestBody, UserLoginRequestBody } from "../types/types.js";
@@ -26,7 +25,16 @@ router.post("/register", async (req: TypedRequestBody<UserLoginRequestBody>, res
   if (!email || !password) {
     res.render("auth/register", { error: "Email and password required" });
     return;
-  }
+  } catch (err) {
+    console.error(err);
+    res.status(500).render("register", {
+      error: "Server error",
+      email: email || "",
+    });
+    return;
+    /* res.status(400).json({ error: "Email and password required" });
+      return;
+    }
 
   if (password.length < 8) {
     res.render("auth/register", { error: "Password must be at least 8 characters" });
@@ -62,8 +70,33 @@ router.get("/login", (_request, response) => {
 router.post("/login", async (req: TypedRequestBody<UserLoginRequestBody>, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
-    res.render("auth/login", { error: "Email and password required" });
+    //compare provided password with hashed password in database
+    const match = await bcrypt.compare(password, user.hashed_password ?? "");
+    if (!match) {
+      res.status(401).render("login", {
+        error: "Invalid email or password",
+        email,
+      });
+      return;
+    }
+
+    //log the user in by creating a session
+    req.session.user = {
+      id: user.id,
+      email: user.email,
+    };
+
+    res.redirect("/auth/lobby");
+    return;
+  } catch (err) {
+    console.error(err);
+    res.status(500).render("login", {
+      error: "Server error",
+      email: email || "",
+    });
+    return;
+    /* if (!email || !password) {
+    res.status(400).json({ error: "Email and password required" });
     return;
   }
 
