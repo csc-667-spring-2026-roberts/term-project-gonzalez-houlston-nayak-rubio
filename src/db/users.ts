@@ -1,9 +1,10 @@
-import { User, DbUser } from "../types/types.js";
+import { DbUser, User } from "../types/types.js";
 import db from "./connection.js";
 
 const existing = async (email: string): Promise<boolean> => {
   try {
     await db.none("SELECT id FROM users WHERE email = $1", [email]);
+
     return false;
   } catch {
     return true;

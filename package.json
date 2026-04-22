@@ -5,12 +5,13 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "build:client": "esbuild src/client/lobby.ts --bundle --outdir=public/js --platform=browser --format=iife",
-    "watch:client": "esbuild src/client/lobby.ts --bundle --outdir=public/js --platform=browser --format=iife --watch",
-    "watch:server": "tsx watch src/index.ts",
-    "dev": "concurrently \"npm run watch:server\" \"npm run watch:client\"",
-    "build": "tsc",
+    "build": "npm run build:server && npm run build:client",
+    "build:server": "tsc",
+    "build:client": "esbuild src/client/*.ts --bundle --outdir=public/js --sourcemap",
     "start": "node dist/index.js",
+    "dev": "concurrently -n server,client -c blue,green \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "tsx watch src/index.ts",
+    "dev:client": "esbuild src/client/*.ts --bundle --outdir=public/js --sourcemap --watch",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write \"src/**/*.ts\"",
@@ -20,6 +21,7 @@
     "migrate": "tsx node_modules/.bin/node-pg-migrate -j ts create --",
     "migrate:up": "tsx node_modules/.bin/node-pg-migrate up -j ts",
     "migrate:down": "tsx node_modules/.bin/node-pg-migrate down -j ts"
+
   },
   "lint-staged": {
     "src/**/*.ts": [
@@ -41,19 +43,17 @@
     "@types/express": "^5.0.6",
     "@types/express-session": "^1.18.2",
     "@types/livereload": "^0.9.5",
-    "@types/node": "^20.19.35",
+    "@types/node": "^20.11.0",
     "@types/pg-promise": "^0.0.28",
     "concurrently": "^9.2.1",
-    "esbuild": "^0.28.0",
+    "esbuild": "^0.27.4",
     "eslint": "^9.0.0",
     "husky": "^9.0.0",
     "lint-staged": "^15.2.0",
-    "nodemon": "^3.1.14",
     "prettier": "^3.2.0",
     "prettier-plugin-ejs": "^1.0.3",
-    "ts-node": "^10.9.2",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0",
     "typescript-eslint": "^8.0.0"
   },
   "dependencies": {
@@ -66,7 +66,6 @@
     "express-session": "^1.19.0",
     "livereload": "^0.10.3",
     "node-pg-migrate": "^8.0.4",
-    "pg": "^8.20.0",
     "pg-promise": "^12.6.2"
   }
 }

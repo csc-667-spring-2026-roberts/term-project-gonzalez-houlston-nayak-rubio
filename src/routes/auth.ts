@@ -1,5 +1,7 @@
 import { Router } from "express";
+import crypto from "crypto";
 import bcrypt from "bcrypt";
+
 import Users from "../db/users.js";
 import { TypedRequestBody, UserLoginRequestBody } from "../types/types.js";
 
@@ -17,48 +19,35 @@ router.get("/register", (_request, response) => {
   response.render("auth/register");
 });
 
-//Post route /register to create new user
-router.post("/register", async (req: TypedRequestBody<UserLoginRequestBody>, res) => {
-  const { email, password } = req.body;
+router.post("/register", async (request: TypedRequestBody<UserLoginRequestBody>, response) => {
+  const { email, password } = request.body;
 
-  //check if email and password are sent
   if (!email || !password) {
-    res.render("auth/register", { error: "Email and password required" });
+    response.render("auth/register", { error: "Email and password required" });
     return;
-  } catch (err) {
-    console.error(err);
-    res.status(500).render("register", {
-      error: "Server error",
-      email: email || "",
-    });
-    return;
-    /* res.status(400).json({ error: "Email and password required" });
-      return;
-    }
+  }
 
   if (password.length < 8) {
-    res.render("auth/register", { error: "Password must be at least 8 characters" });
+    response.render("auth/register", { error: "Password must be at least 8 characters" });
     return;
   }
 
   try {
-    //chreck if user already exists with same email
     if (await Users.existing(email)) {
-      res.render("auth/register", { error: "Email already exists" });
+      response.render("auth/register", { error: "Email is already registered" });
       return;
     }
 
-    //hash the password before storing in database
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
     const avatar = gravatarUrl(email);
 
     const user = await Users.create(email, passwordHash, avatar);
 
-    req.session.user = user;
-    res.redirect("/lobby");
-  } catch (err) {
-    console.error("Registration error: ", err);
-    res.render("auth/register", { error: "Registration failed" });
+    request.session.user = user;
+    response.redirect("/lobby");
+  } catch (error) {
+    console.error("Registration error:", error);
+    response.render("auth/register", { error: "Registration failed" });
   }
 });
 
@@ -66,72 +55,45 @@ router.get("/login", (_request, response) => {
   response.render("auth/login");
 });
 
-//Post route /login to authenticate user and create session
-router.post("/login", async (req: TypedRequestBody<UserLoginRequestBody>, res) => {
-  const { email, password } = req.body;
+router.post("/login", async (request: TypedRequestBody<UserLoginRequestBody>, response) => {
+  const { email, password } = request.body;
 
-    //compare provided password with hashed password in database
-    const match = await bcrypt.compare(password, user.hashed_password ?? "");
-    if (!match) {
-      res.status(401).render("login", {
-        error: "Invalid email or password",
-        email,
-      });
-      return;
-    }
-
-    //log the user in by creating a session
-    req.session.user = {
-      id: user.id,
-      email: user.email,
-    };
-
-    res.redirect("/auth/lobby");
-    return;
-  } catch (err) {
-    console.error(err);
-    res.status(500).render("login", {
-      error: "Server error",
-      email: email || "",
-    });
-    return;
-    /* if (!email || !password) {
-    res.status(400).json({ error: "Email and password required" });
+  if (!email || !password) {
+    response.render("auth/login", { error: "Email and password required" });
     return;
   }
 
   try {
-    const dBUser = await Users.findByEmail(email);
-    const isMatch = await bcrypt.compare(password, dBUser.password_hash);
+    const dbUser = await Users.findByEmail(email);
+    const isMatch = await bcrypt.compare(password, dbUser.password_hash);
 
     if (!isMatch) {
-      throw new Error("Invalid credentials");
+      throw new Error(`Match not found for ${email}`);
     }
 
     const user = {
-      id: dBUser.id,
-      email: dBUser.email,
-      gravatar_url: dBUser.gravatar_url,
-      created_at: dBUser.created_at,
+      id: dbUser.id,
+      email: dbUser.email,
+      gravatar_url: dbUser.gravatar_url,
+      created_at: dbUser.created_at,
     };
 
-    req.session.user = user;
-    res.redirect("/lobby");
-  } catch (err) {
-    console.error("Login error: ", err);
-    res.render("auth/login", { error: "Invalid email or password" });
+    request.session.user = user;
+    response.redirect("/lobby");
+  } catch (error) {
+    console.error("Login error:", error);
+    response.render("auth/login", { error: "Invalid email or password" });
   }
 });
 
-router.post("/logout", (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      console.error("Logout error: ", err);
+router.post("/logout", (request, response) => {
+  request.session.destroy((error) => {
+    if (error) {
+      console.error("Logout error:", error);
     }
 
-    //clear the session cookie
-    res.clearCookie("connect.sid");
-    res.redirect("/auth/login");
+    response.clearCookie("connect.sid");
+    response.redirect("/auth/login");
   });
 });
 

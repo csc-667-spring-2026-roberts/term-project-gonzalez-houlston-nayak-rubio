@@ -1,106 +1,28 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/auth.js";
-import { broadcast } from "../types/sse.js";
+import Games from "../db/games.js";
+import SSE from "../sse.js";
+import { EventTypes } from "../types/types.js";
 
 const router = Router();
 
-interface Game {
-  id: number;
-  hostId: number;
-  hostEmail: string;
-  players: number;
-  playerIds: number[];
-  status: "waiting" | "started";
-}
+// Create a game
+router.post("/", async (request, response) => {
+  const userId = request.session.user?.id;
+  if (!userId) {
+    response.redirect("/");
+    return;
+  }
 
-const games: Game[] = [];
-let nextGameId = 1;
+  const game = await Games.create(userId);
+  SSE.broadcast({ type: EventTypes.games_updated, games: await Games.list() });
 
-router.get("/", requireAuth, (_req, res) => {
-  res.json(games);
+  response.redirect(`/games/${String(game.id)}`);
 });
 
-router.post("/create", requireAuth, (req, res) => {
-  const user = req.session.user;
+router.get("/:id", (request, response) => {
+  const { id } = request.params;
 
-  if (!user) {
-    res.redirect("/auth/login");
-    return;
-  }
-
-  const game: Game = {
-    id: nextGameId++,
-    hostId: user.id,
-    hostEmail: user.email,
-    players: 1,
-    playerIds: [user.id],
-    status: "waiting",
-  };
-
-  games.unshift(game);
-
-  broadcast({
-    type: "GAME_CREATED",
-    games,
-  });
-
-  res.redirect("/auth/lobby");
-});
-
-router.post("/:id/join", requireAuth, (req, res) => {
-  const user = req.session.user;
-
-  if (!user) {
-    res.redirect("/auth/login");
-    return;
-  }
-
-  const gameId = Number(req.params.id);
-  const game = games.find((g) => g.id === gameId);
-
-  if (!game) {
-    res.status(404).send("Game not found");
-    return;
-  }
-
-  if (game.playerIds.includes(user.id)) {
-    res.redirect("/auth/lobby");
-    return;
-  }
-
-  if (game.players >= 2) {
-    res.status(400).send("Game is full");
-    return;
-  }
-
-  game.playerIds.push(user.id);
-  game.players = game.playerIds.length;
-
-  if (game.players === 2) {
-    game.status = "started";
-  }
-
-  broadcast({
-    type: "GAME_JOINED",
-    games,
-  });
-
-  res.redirect(`/games/${String(game.id)}`);
-});
-
-router.get("/:id", requireAuth, (req, res) => {
-  const gameId = Number(req.params.id);
-  const game = games.find((g) => g.id === gameId);
-
-  if (!game) {
-    res.status(404).send("Game not found");
-    return;
-  }
-
-  res.render("game", {
-    user: req.session.user,
-    game,
-  });
+  response.render("game", { gameId: id });
 });
 
 export default router;

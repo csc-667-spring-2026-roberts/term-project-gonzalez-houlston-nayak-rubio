@@ -1,23 +1,56 @@
 "use strict";
 (() => {
   // src/client/lobby.ts
-  document.addEventListener("DOMContentLoaded", () => {
-    const btn = document.getElementById("fetch-players-btn");
-    const list = document.getElementById("player-list");
-    const tmpl = document.getElementById("player-template");
-    btn?.addEventListener("click", () => {
-      void (async () => {
-        const res = await fetch("/lobby/players");
-        const data = await res.json();
-        if (!list || !tmpl) return;
-        list.replaceChildren();
-        for (const player of data.players) {
-          const clone = tmpl.content.cloneNode(true);
-          const emailSpan = clone.querySelector("[data-field='email']");
-          if (emailSpan) emailSpan.textContent = player.email;
-          list.appendChild(clone);
-        }
-      })();
+  var source = new EventSource("/api/sse");
+  var createGameButton = document.querySelector("#create-game");
+  var gamesList = document.querySelector("#games-list");
+  var gameCardTemplate = document.querySelector("#game-card-template");
+  function renderGame(game) {
+    const clone = gameCardTemplate?.content.cloneNode(true);
+    const idEl = clone.querySelector("[data-game-id]");
+    const creatorEl = clone.querySelector("[data-creator]");
+    const playerCountEl = clone.querySelector("[data-player-count]");
+    const statusEl = clone.querySelector("[data-status]");
+    const form = clone.querySelector("form");
+    if (idEl) idEl.textContent = `Game #${String(game.id)}`;
+    if (creatorEl) creatorEl.textContent = game.creator_email;
+    if (playerCountEl) playerCountEl.textContent = `${String(game.player_count)} player(s)`;
+    if (statusEl) statusEl.textContent = String(game.status);
+    if (form) form.action = `/api/games/${String(game.id)}/join`;
+    return clone.firstElementChild;
+  }
+  async function loadGames() {
+    const response = await fetch("/api/games");
+    const { games } = await response.json();
+    if (!gamesList) {
+      return;
+    }
+    if (games.length === 0) {
+      gamesList.innerHTML = "<p>No games created yet. Create one!</p>";
+      return;
+    }
+    gamesList.replaceChildren(...games.map(renderGame));
+  }
+  async function createGame() {
+    const response = await fetch("/api/games", {
+      method: "post"
     });
-  });
+    if (!response.ok) {
+      console.error("Failed to create game");
+      return;
+    }
+    await loadGames();
+  }
+  createGameButton?.addEventListener("click", () => void createGame());
+  source.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    console.log({ data });
+    if (data.type === "games_updated" /* games_updated */) {
+      void loadGames();
+    }
+  };
+  source.onopen = () => {
+    void loadGames();
+  };
 })();
+//# sourceMappingURL=lobby.js.map

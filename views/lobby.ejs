@@ -1,102 +1,48 @@
-<%- include('partials/header', { title: 'Lobby', user }) %>
+<!DOCTYPE html>
+<html lang="en">
 
-<section class="box">
-  <h1>Lobby</h1>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= typeof title !=="undefined" ? title : "Jrob's game" %>
+    </title>
+    <link rel="stylesheet" href="/css/home.css">
+    <script src="/js/lobby.js" defer></script>
+</head>
 
-  <p>Welcome, <strong><%= user.email %></strong></p>
+<body>
+    <%- include("partials/nav") %>
 
-  <h2>Games</h2>
+        <main>
+            <%- include("partials/error") %>
+                <h2>Lobby</h2>
 
-  <form method="POST" action="/games/create">
-    <button type="submit">Create Game</button>
-  </form>
+                <section>
+                    <h3>Games</h3>
 
-  <div id="games-list">Loading...</div>
+                    <form method="post" action="/games">
+                        <button type="submit">Create game</button>
+                    </form>
 
-  <form method="POST" action="/auth/logout">
-    <button type="submit">Logout</button>
-  </form>
-</section>
+                    <div id="games-list">
+                        <p>Loading...</p>
+                    </div>
 
-<script>
-  const currentUserId = <%- JSON.stringify(user.id) %>;
-  const gamesList = document.getElementById("games-list");
+                    <template id="game-card-template">
+                        <div class="game-card">
+                            <span data-game-id></span>
+                            <span data-creator></span>
+                            <span data-player-count></span>
+                            <span data-status></span>
+                            <form method="post">
+                                <button>Join</button>
+                            </form>
+                        </div>
+                    </template>
 
-  function renderGames(games) {
-    if (!games || games.length === 0) {
-      gamesList.innerHTML = "<p>No games yet.</p>";
-      return;
-    }
+                </section>
+        </main>
+</body>
 
-    gamesList.innerHTML = games
-      .map((game) => {
-        const playerIds = Array.isArray(game.playerIds) ? game.playerIds : [];
-        const isInGame = playerIds.includes(currentUserId);
-        const isWaiting = game.status === "waiting";
-        const isFull = game.players >= 2;
-
-        let actionHtml = "";
-
-        if (isInGame) {
-          actionHtml = `<span style="margin-left: 8px;">You are in this game</span>`;
-        } else if (isWaiting && !isFull) {
-          actionHtml = `
-            <form method="POST" action="/games/${game.id}/join" style="display:inline; margin-left: 8px;">
-              <button type="submit">Join Game</button>
-            </form>
-          `;
-        } else if (isFull) {
-          actionHtml = `<span style="margin-left: 8px;">Game full</span>`;
-        } else {
-          actionHtml = `<span style="margin-left: 8px;">Unavailable</span>`;
-        }
-
-        return `
-          <div style="margin-bottom: 8px;">
-            Game #${game.id} hosted by ${game.hostEmail} - ${game.players} player(s) - ${game.status}
-            ${actionHtml}
-          </div>
-        `;
-      })
-      .join("");
-  }
-
-  async function loadGames() {
-    try {
-      const response = await fetch("/games");
-      const games = await response.json();
-      console.log("Loaded games:", games);
-      renderGames(games);
-    } catch (error) {
-      gamesList.innerHTML = "<p>Failed to load games.</p>";
-      console.error(error);
-    }
-  }
-
-  const eventSource = new EventSource("/api/sse");
-
-  eventSource.onmessage = function (event) {
-    const payload = JSON.parse(event.data);
-    console.log("SSE:", payload);
-
-    if (payload.type === "GAME_CREATED" || payload.type === "GAME_JOINED") {
-      loadGames();
-    }
-
-    // auto-redirect if your game starts
-    if (payload.type === "GAME_JOINED" && payload.games) {
-      const joinedGame = payload.games.find((game) =>
-        Array.isArray(game.playerIds) &&
-        game.playerIds.includes(currentUserId) &&
-        game.players === 2 &&
-        game.status === "started"
-      );
-
-      if (joinedGame) {
-        window.location.href = `/games/${joinedGame.id}`;
-      }
-    }
-  };
-
-  loadGames();
-</script>
+</html>

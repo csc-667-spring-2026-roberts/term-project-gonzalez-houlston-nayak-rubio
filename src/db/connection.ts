@@ -4,8 +4,11 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error("Connection String Undefined");
+if (connectionString === undefined) {
+  throw new Error("Connection string undefined");
 }
 
-export default pgPromise()(connectionString);
+const pgp = pgPromise();
+const connection = pgp(connectionString);
+
+export default connection;
